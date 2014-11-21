@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="create">创建数据库</string>
+    <string name="insert">插入数据</string>
+    <string name="delete">删除数据</string>
+    <string name="drop">删除数据库</string>
+    <string name="modify">修改数据</string>
+</resources>
