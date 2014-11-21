@@ -2,8 +2,8 @@ AutoTable
 =========
 This is a simple android sqlite Object Relational Mapping.
 
-@Table("student")
-public class Student {
+            @Table("student")
+            public class Student {
             
         @Column(value = "id",isPrimary = true)
         private int id;
@@ -28,23 +28,23 @@ public class Student {
         public String getName() {
                 return name;
             }
-        
+            
             public void setName(String name) {
                 this.name = name;
             }
-        
+            
             public int getAge() {
                 return age;
             }
-        
+            
             public void setAge(int age) {
                 this.age = age;
             }
-        
+            
             public boolean isSex() {
                 return sex;
             }
-        
+            
             public void setSex(boolean sex) {
                 this.sex = sex;
             }
