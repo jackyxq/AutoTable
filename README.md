@@ -2,13 +2,14 @@ AutoTable
 =========
 This is a simple android sqlite Object Relational Mapping.
 
-@Table("student")
-public class Student {
-    @Column(value = "id",isPrimary = true)
-    private int id;
+        @Table("student")
+        public class Student {
+            
+        @Column(value = "id",isPrimary = true)
+        private int id;
     
-    @Column("name")
-    private String name;
+        @Column("name")
+        private String name;
     
     @Column("age")
     private int age;
@@ -47,14 +48,13 @@ public class Student {
     public void setSex(boolean sex) {
         this.sex = sex;
     }
-}
+    }
 
-======
-
+---------
 Use Class DBHelper to handle database operator.
 You don't need to care about the syntax of SQL and the database is updated, it will help you to achieve the data field update.
 
-eg.
+### example
 
     DBHelper.createTables(Student.class);
     DBHelper.dropTables(Student.class);
