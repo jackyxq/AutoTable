@@ -55,6 +55,7 @@ Use Class DBHelper to handle database operator.
 You don't need to care about the syntax of SQL and the database is updated, it will help you to achieve the data field update.
 
 eg.
+
     DBHelper.createTables(Student.class);
     DBHelper.dropTables(Student.class);
  
