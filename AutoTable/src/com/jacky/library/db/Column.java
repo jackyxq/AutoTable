@@ -24,4 +24,19 @@ public @interface Column {
 	 * @return
 	 */
 	boolean isPrimary() default false;
+	/**
+	 * 该成员的取值方式。不为空，则取对应函数的结果；为空，则取对应字段的值
+	 * @return
+	 */
+	String get() default "";
+	/**
+	 * 该成员的设值方式。不为空，则用对应函数来设置；为空，则设置对应成员的值
+	 * @return
+	 */
+	String set() default "";
+	/**
+	 * 该字段的类型。为空，则为该字段的类型
+	 * @return
+	 */
+	String type() default "";
 }

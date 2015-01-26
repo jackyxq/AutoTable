@@ -1,6 +1,7 @@
 package com.jacky.library.db;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +27,7 @@ public final class DBHelper {
 	}
 	
 	public static void dropTables(SQLiteDatabase db, Class<?>... classes) {
+		if(db == null) return;
 		if(classes == null || classes.length == 0) {
 			throw new DatabaseException("No Table to drop.");
 		}
@@ -40,6 +42,8 @@ public final class DBHelper {
 	}
 	
 	public static void dropTablesByName(SQLiteDatabase db, String... tables) {
+		if(db == null) return;
+		
 		if(tables == null || tables.length == 0) {
 			throw new DatabaseException("No Table to drop.");
 		}
@@ -53,10 +57,13 @@ public final class DBHelper {
 	}
 	
 	public static void createTables(SQLiteDatabase db, Class<?>... classes) {
+		if(db == null) return;
+		
 		if(classes == null || classes.length == 0) {
-			throw new DatabaseException("No Table to create.");
+			return;
+//			throw new DatabaseException("No Table to create.");
 		}
-
+		
 		db.beginTransaction();
 		for(Class<?> clazz : classes) {
 			Table table = getTable(clazz);
@@ -74,7 +81,7 @@ public final class DBHelper {
 				for (Field field : fields) {
 					Column column = field.getAnnotation(Column.class);
 					if(column != null) {
-						String type = getDBType(field.getType());
+						String type = getDBType(column, field.getType());
 						String value = map.get(column.value());
 						
 						if(type.equals(value)) {
@@ -128,7 +135,7 @@ public final class DBHelper {
 		for (Field field : fields) {
 			Column column = field.getAnnotation(Column.class);
 			if(column != null) {
-				String type = getDBType(field.getType());
+				String type = getDBType(column, field.getType());
 				if(column.isPrimary()) {
 					if(hasId == true) {
 						throw new DatabaseException("Primary key had in the table,set isPrimary is false.");
@@ -189,7 +196,7 @@ public final class DBHelper {
 					continue;//自动生成主键，则不添加主键信息
 				}
 				
-				String tmp = getFieldValue(field, t);
+				String tmp = getFieldValue(clazz, column, field, t);
 				if(tmp != null) {
 					values.put(column.value(), tmp);
 				}
@@ -197,6 +204,68 @@ public final class DBHelper {
 			long id = db.insert(table.value(), null, values);
 			if(idField != null && id != -1) {
 				setObjectValue(idField, t, id);//更新 主键ID
+			}
+		}
+		db.setTransactionSuccessful();
+		db.endTransaction();
+	}
+	
+	public static <T> void insertOrUpdate(T... list) {
+		insertOrUpdate(BaseApplication.getDefaultSqliteDatabase(), list);
+	}
+	
+	public static <T> void insertOrUpdate(SQLiteDatabase db, T... list) {
+		if(db == null || list == null || list.length <= 0) return;
+		
+		Class<?> clazz = list[0].getClass();
+		Table table = getTable(clazz);
+		Field[] fields = clazz.getDeclaredFields();
+		
+		String whereClause = null;
+		for(Field field : fields) {
+			Column column = field.getAnnotation(Column.class);
+			if(column != null && column.isPrimary()) {
+				whereClause = column.value() + "=?";
+				break;
+			}
+		}
+		
+		if(whereClause == null) {
+			throw new DatabaseException("This table no primary key.");
+		}
+		
+		String id = null;
+		db.beginTransaction();
+		for(T t : list) {
+			if(t == null) continue;
+			checkClass(t, clazz);
+			Field idField = null;
+			ContentValues values = new ContentValues();
+			for(Field field : fields) {
+				Column column = field.getAnnotation(Column.class);
+				if(column == null) continue;
+				
+				if(column.isPrimary()) {
+					id = getFieldValue(clazz, column, field, t);
+					
+					if(table.autoId()) {
+						idField = field;
+						continue;//自动生成主键，则不添加主键信息
+					}
+				}
+				
+				String tmp = getFieldValue(clazz, column, field, t);
+				if(tmp != null) {
+					values.put(column.value(), tmp);
+				}
+			}
+			
+			int i = db.update(table.value(), values, whereClause, new String[]{id});
+			if(i == 0) { //没有数据，则insert
+				long newid = db.insert(table.value(), null, values);
+				if(idField != null && newid != -1) {
+					setObjectValue(idField, t, newid);//更新 主键ID
+				}
 			}
 		}
 		db.setTransactionSuccessful();
@@ -248,7 +317,7 @@ public final class DBHelper {
 				Column column = field.getAnnotation(Column.class);
 				if(column == null) continue;
 				
-				tmp = getFieldValue(field, t);
+				tmp = getFieldValue(clazz, column, field, t);
 				if(column.isPrimary()) {
 					id = tmp;
 				} else if(tmp != null) {
@@ -280,6 +349,8 @@ public final class DBHelper {
 	 * @param whereArgs
 	 */
 	public static <T> void updateByWhere(SQLiteDatabase db, T t,boolean ignoreKey, String whereClause, String[] whereArgs) {
+		if(db == null) return;
+		
 		Class<?> clazz = t.getClass();
 		Table table = getTable(clazz);
 		ContentValues values = new ContentValues();
@@ -288,11 +359,22 @@ public final class DBHelper {
 			if(column == null) continue;
 			if(ignoreKey && column.isPrimary()) continue;
 			
-			String tmp = getFieldValue(field, t);
+			String tmp = getFieldValue(clazz, column, field, t);
 			if(tmp != null) {
 				values.put(column.value(), tmp);
 			}
 		}
+		db.update(table.value(), values, whereClause, whereArgs);
+	}
+	
+	public static <T> void updateByValues(Class<T> clazz,ContentValues values, String whereClause, String[] whereArgs) {
+		updateByValues(BaseApplication.getDefaultSqliteDatabase(), clazz, values, whereClause, whereArgs);
+	}
+	
+	public static <T> void updateByValues(SQLiteDatabase db, Class<T> clazz,ContentValues values, String whereClause, String[] whereArgs) {
+		if(db == null) return;
+		
+		Table table = getTable(clazz);
 		db.update(table.value(), values, whereClause, whereArgs);
 	}
 	
@@ -341,7 +423,10 @@ public final class DBHelper {
 			
 			int i = 0;
 			for(Field field : fields) {
-				whereArgs[i++] = getFieldValue(field, t);
+				Column column = field.getAnnotation(Column.class);
+				if(column != null) {
+					whereArgs[i++] = getFieldValue(clazz, column, field, t);
+				}
 			}
 			db.delete(table.value(), whereClause, whereArgs);
 		}
@@ -368,6 +453,8 @@ public final class DBHelper {
 	 * @param whereArgs
 	 */
 	public static void deleteByWhere(SQLiteDatabase db, Class<?> clazz, String whereClause, String[] whereArgs) {
+		if(db == null) return;
+		
 		Table table = getTable(clazz);
 		db.delete(table.value(), whereClause, whereArgs);
 	}
@@ -386,6 +473,8 @@ public final class DBHelper {
 	 * @param id
 	 */
 	public static void deleteByID(SQLiteDatabase db, Class<?> clazz,String... id) {
+		if(db == null) return;
+		
 		Table table = getTable(clazz);
 		String whereClause = null;
 		for(Field field : clazz.getDeclaredFields()) {
@@ -458,6 +547,19 @@ public final class DBHelper {
 		return list;
 	}
 	
+	public static <T> Cursor getQueryCursor(Class<T> clazz, String whereClause, String[] whereArgs) {
+		return getQueryCursor(BaseApplication.getDefaultSqliteDatabase(), clazz, whereClause, whereArgs);
+	}
+	
+	public static <T> Cursor getQueryCursor(SQLiteDatabase db, Class<T> clazz, String whereClause, String[] whereArgs) {
+		Table table = getTable(clazz);
+		
+		Cursor cursor = TextUtils.isEmpty(whereClause) ? 
+				db.rawQuery("select * from " + table.value(), null) :
+				db.rawQuery("select * from " + table.value() + " where " + whereClause, whereArgs);
+		return cursor;
+	}
+	
 	/**
 	 * 将查询结果映射为数据对象
 	 * @param clazz
@@ -476,7 +578,7 @@ public final class DBHelper {
 		return list;
 	}
 	
-	private static final <T> T buildObject(Class<T> clazz, Cursor cursor, Field[] fields) {
+	public static final <T> T buildObject(Class<T> clazz, Cursor cursor, Field[] fields) {
 		T t;
 		try {
 			t = clazz.newInstance();
@@ -492,9 +594,44 @@ public final class DBHelper {
 		for(Field field : fields) {
 			Column column = field.getAnnotation(Column.class);
 			if(column == null) continue;
-			
+
 			index = cursor.getColumnIndex(column.value());
 			if(index == -1) continue;
+			
+			if(!TextUtils.isEmpty(column.set())) {
+				try {
+					String type = column.type();
+					if("TEXT".equals(type)) {
+						Method method = clazz.getMethod(column.set(), String.class);
+						method.invoke(t, cursor.getString(index));
+					} else if("INTEGER".equals(type)) {
+						Method method = clazz.getMethod(column.set(), Integer.TYPE);
+						method.invoke(t, cursor.getInt(index));
+					} else if("DOUBLE".equals(type)) {
+						Method method = clazz.getMethod(column.set(), Double.TYPE);
+						method.invoke(t, cursor.getDouble(index));
+					} else if("FLOAT".equals(type)) {
+						Method method = clazz.getMethod(column.set(), Float.TYPE);
+						method.invoke(t, cursor.getFloat(index));
+					} else if("BOOLEAN".equals(type)) {
+						Method method = clazz.getMethod(column.set(), Boolean.TYPE);
+						String v = cursor.getString(index);
+						method.invoke(t, Boolean.parseBoolean(v));
+					} else if("CHAR(1)".equals(type)) {
+						Method method = clazz.getMethod(column.set(), Character.TYPE);
+						method.invoke(t, cursor.getString(index).charAt(0));
+					} else if("BIGINT".equals(type)) {
+						Method method = clazz.getMethod(column.set(), Long.TYPE);
+						method.invoke(t, cursor.getLong(index));
+					} else {
+						throw new DatabaseException("This Field not set type.");
+					}
+				} catch (Exception e) {
+					Logger.w(field);
+					Logger.e(e);
+				}
+				continue;
+			}
 			
 			field.setAccessible(true);
 			Class<?> type = field.getType();
@@ -543,7 +680,11 @@ public final class DBHelper {
 		return t;
 	}
 	
-	private static final String getDBType(Class<?> type) {
+	private static final String getDBType(Column column, Class<?> type) {
+		if(TextUtils.isEmpty(column.type()) == false) {
+			return column.type();
+		}
+		
 		if(Integer.TYPE == type || Integer.class == type) return "INTEGER";
 		if(Double.TYPE == type || Double.class == type) return "DOUBLE";
 		if(Character.TYPE == type || Character.class == type) return "CHAR(1)";
@@ -588,7 +729,19 @@ public final class DBHelper {
 		}
 	}
 	
-	private static final <T> String getFieldValue(Field field,T t) {
+	private static final <T> String getFieldValue(Class<?> clazz, Column column, Field field,T t) {
+		if(!TextUtils.isEmpty(column.get())) {
+			try {
+				Method method = clazz.getMethod(column.get());
+				Object obj = method.invoke(t);
+				if(obj == null) return null;
+				return obj.toString();
+			} catch (Exception e) {
+				Logger.e(e);
+				return null;
+			}
+		}
+
 		field.setAccessible(true);
 		try {
 			Object obj = field.get(t);
