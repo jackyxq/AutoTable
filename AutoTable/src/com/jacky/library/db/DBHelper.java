@@ -95,10 +95,10 @@ public final class DBHelper {
 				} else {
 					String t = sb.deleteCharAt(0).toString();
 					//通过创建临时表的方式来实现对表的字段的修改
-					db.execSQL("ALTER TABLE " + tableName + " RENAME TO temp");
+					db.execSQL("ALTER TABLE " + tableName + " RENAME TO TEMP");
 					db.execSQL(generateCreateTableSql(table, fields));
-					db.execSQL("INSERT INTO "+ tableName + "(" + t + ") SELECT " + t + " FROM temp");
-					db.execSQL("DROP TABLE temp");
+					db.execSQL("INSERT INTO "+ tableName + "(" + t + ") SELECT " + t + " FROM TEMP");
+					db.execSQL("DROP TABLE TEMP");
 				}
 			}
 		}
@@ -109,7 +109,7 @@ public final class DBHelper {
 	private static final Map<String, String> queryTableColumnsInfo(SQLiteDatabase db, String table) {
 		Cursor cursor = null;
 		try{
-			cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null);
+			cursor = db.rawQuery("PRAGMA TABLE_INFO(" + table + ")", null);
 			if(cursor.getCount() > 0) {
 				Map<String, String> map = new HashMap<String, String>();
 				while(cursor.moveToNext()) {
@@ -177,7 +177,7 @@ public final class DBHelper {
 	 * @param list
 	 */
 	public static <T> void insert(SQLiteDatabase db, T... list) {
-		if(db == null || list == null || list.length <= 0) return;
+		if(db == null || list == null || list.length <= 0 || list[0] == null) return;
 		
 		Class<?> clazz = list[0].getClass();
 		Table table = getTable(clazz);
@@ -215,7 +215,7 @@ public final class DBHelper {
 	}
 	
 	public static <T> void insertOrUpdate(SQLiteDatabase db, T... list) {
-		if(db == null || list == null || list.length <= 0) return;
+		if(db == null || list == null || list.length <= 0 || list[0] == null) return;
 		
 		Class<?> clazz = list[0].getClass();
 		Table table = getTable(clazz);
@@ -287,7 +287,7 @@ public final class DBHelper {
 	 * @param list
 	 * @throws DatabaseException 如果该表结构没有设置主键，则会 throw 异常
 	 */
-	public static <T> void update(SQLiteDatabase db, T... list) throws DatabaseException {
+	public static <T> void update(SQLiteDatabase db, T... list) {
 		if(db == null || list == null || list.length == 0) return;
 		
 		Class<?> clazz = list[0].getClass();
@@ -522,7 +522,7 @@ public final class DBHelper {
 			throw new DatabaseException("This table no primary key.");
 		}
 		
-		Cursor cursor = db.rawQuery("select * from " + table.value() + " where " + whereClause, new String[]{id});
+		Cursor cursor = db.rawQuery("SELECT * FROM " + table.value() + " WHERE " + whereClause, new String[]{id});
 		T t = null;
 		while(cursor.moveToNext()) {
 			t = buildObject(clazz, cursor, null);
@@ -537,27 +537,71 @@ public final class DBHelper {
 	}
 	
 	public static <T> List<T> queryByWhere(SQLiteDatabase db, Class<T> clazz, String whereClause, String[] whereArgs) {
+		if (db == null) return null;
+			
 		Table table = getTable(clazz);
 		
 		Cursor cursor = TextUtils.isEmpty(whereClause) ? 
-				db.rawQuery("select * from " + table.value(), null) :
-				db.rawQuery("select * from " + table.value() + " where " + whereClause, whereArgs);
+				db.rawQuery("SELECT * FROM " + table.value(), null) :
+				db.rawQuery("SELECT * FROM " + table.value() + " WHERE " + whereClause, whereArgs);
 		List<T> list = reflectObject(clazz, cursor);
 		cursor.close();
 		return list;
 	}
 	
+	/**
+	 * @param clazz
+	 * @param whereClause
+	 * @param whereArgs
+	 * @return Cursor 需要执行 close() 操作
+	 */
 	public static <T> Cursor getQueryCursor(Class<T> clazz, String whereClause, String[] whereArgs) {
 		return getQueryCursor(BaseApplication.getDefaultSqliteDatabase(), clazz, whereClause, whereArgs);
 	}
 	
+	/**
+	 * 
+	 * @param db
+	 * @param clazz
+	 * @param whereClause
+	 * @param whereArgs
+	 * @return Cursor 需要执行 close() 操作
+	 */
 	public static <T> Cursor getQueryCursor(SQLiteDatabase db, Class<T> clazz, String whereClause, String[] whereArgs) {
 		Table table = getTable(clazz);
 		
 		Cursor cursor = TextUtils.isEmpty(whereClause) ? 
-				db.rawQuery("select * from " + table.value(), null) :
-				db.rawQuery("select * from " + table.value() + " where " + whereClause, whereArgs);
+				db.rawQuery("SELECT * FROM " + table.value(), null) :
+				db.rawQuery("SELECT * FROM " + table.value() + " WHERE " + whereClause, whereArgs);
 		return cursor;
+	}
+	
+	public static boolean isEmpty(Class<?> clazz) {
+		return isEmpty(BaseApplication.getDefaultSqliteDatabase(), clazz);
+	}
+	
+	public static boolean isEmpty(SQLiteDatabase db, Class<?> clazz) {
+		Table table = getTable(clazz);
+		
+		Cursor cursor = db.rawQuery("SELECT 1 FROM " + table.value() + " LIMIT 1", null);
+		if(cursor == null) return true;
+		int size = cursor.getCount();
+		cursor.close();
+		return size <= 0;
+	}
+	
+	public static int getSize(Class<?> clazz) {
+		return getSize(BaseApplication.getDefaultSqliteDatabase(), clazz);
+	}
+	
+	public static int getSize(SQLiteDatabase db, Class<?> clazz) {
+		Table table = getTable(clazz);
+		
+		Cursor cursor = db.rawQuery("SELECT COUNT(1) FROM " + table.value(), null);
+		if(cursor == null) return 0;
+		int i = cursor.getInt(0);
+		cursor.close();
+		return i;
 	}
 	
 	/**
@@ -616,7 +660,7 @@ public final class DBHelper {
 					} else if("BOOLEAN".equals(type)) {
 						Method method = clazz.getMethod(column.set(), Boolean.TYPE);
 						String v = cursor.getString(index);
-						method.invoke(t, Boolean.parseBoolean(v));
+						method.invoke(t, "1".equals(v) ? true : Boolean.parseBoolean(v));
 					} else if("CHAR(1)".equals(type)) {
 						Method method = clazz.getMethod(column.set(), Character.TYPE);
 						method.invoke(t, cursor.getString(index).charAt(0));
@@ -656,7 +700,7 @@ public final class DBHelper {
 					field.set(t, cursor.getDouble(index));
 				} else if(type == Boolean.TYPE || type == Boolean.class) {
 					String v = cursor.getString(index);
-					field.setBoolean(t, Boolean.parseBoolean(v));
+					field.setBoolean(t, "1".equals(v) ? true : Boolean.parseBoolean(v));
 				} else if(type == Float.TYPE) {
 					field.setFloat(t, cursor.getFloat(index));
 				} else if(type == Float.class) {
