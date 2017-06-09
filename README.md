@@ -2,8 +2,8 @@ AutoTable
 =========
 This is a simple android sqlite Object Relational Mapping.
 
-            @Table("student")
-            public class Student {
+    @Table(value = "student", autoId = true)
+    public class Student {
             
         @Column(value = "id",isPrimary = true)
         private int id;
@@ -50,18 +50,18 @@ This is a simple android sqlite Object Relational Mapping.
             }
         }
 
-Use Class DBHelper to handle database operator.
+Use Class DBManager to handle database operator.
 You don't need to care about the syntax of SQL and the database is updated, it will help you to achieve the data field update.
 
 ### example
 
-    DBHelper.createTables(Student.class);
-    DBHelper.dropTables(Student.class);
+	DBManager mDBManager = new DBManager(this, "table.db");
+    mDBManager.createTables(getContext(), Student.class);
  
-    DBHelper.delete(Student.class);
+    mDBManager.deleteAll(Student.class);
  
     Student student1 = new Student();
-    DBHelper.insert(student1);
+    mDBManager.insert(student1);
  
-    List<Student>  list = DBHelper.query(Student.class);
+    List<Student>  list = mDBManager.query(Student.class);
  

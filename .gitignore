@@ -24,3 +24,9 @@ proguard/
 
 # Log Files
 *.log
+/AutoTable/assets
+/AutoTable/bin
+/AutoTable/gen
+/AutoTable/.classpath
+/AutoTable/.project
+/AutoTable/.settings

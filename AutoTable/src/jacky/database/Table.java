@@ -1,4 +1,4 @@
-package com.jacky.library.db;
+package jacky.database;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -22,5 +22,5 @@ public @interface Table {
 	 * 表主键的值是否自动增加
 	 * @return
 	 */
-	boolean autoId() default true;
+	boolean autoId() default false;
 }

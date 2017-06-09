@@ -1,6 +1,6 @@
-package com.jacky.library.db;
+package jacky.database;
 
-public class DatabaseException extends RuntimeException {
+class DatabaseException extends RuntimeException {
 
 	private static final long serialVersionUID = -716877249061673684L;
 

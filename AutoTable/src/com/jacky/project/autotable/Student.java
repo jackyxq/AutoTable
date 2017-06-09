@@ -1,12 +1,12 @@
 package com.jacky.project.autotable;
 
-import com.jacky.library.db.Column;
-import com.jacky.library.db.Table;
+import jacky.database.Column;
+import jacky.database.Table;
 
 /**
  * Created by Administrator on 2014-11-20.
  */
-@Table("student")
+@Table(value = "student", autoId = true)
 public class Student {
     @Column(value = "id",isPrimary = true)
     private int id;

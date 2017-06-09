@@ -1,4 +1,4 @@
-package com.jacky.library.db;
+package jacky.database;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -38,5 +38,11 @@ public @interface Column {
 	 * 该字段的类型。为空，则为该字段的类型
 	 * @return
 	 */
-	String type() default "";
+	DBType type() default DBType.NONE;
+
+	/**
+	 * 默认值
+	 * @return
+	 */
+	String defValue() default "";
 }
