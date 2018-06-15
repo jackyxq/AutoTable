@@ -173,7 +173,21 @@ public final class DBManager {
         sb.append(")");
         return sb.toString();
     }
-
+    
+public boolean isTableExit(Class clazz) {
+    if(mDatabase == null || clazz == null) return false;
+    String name = getTableName(clazz);
+    Cursor cursor = mDatabase.rawQuery("SELECT 1 FROM sqlite_master WHERE NAME='"+ name +"'", null);
+    if(cursor == null) return false;
+    int i = 0;
+    if(0 != cursor.getCount()) {
+        cursor.moveToFirst();
+        i = cursor.getInt(0);
+    }
+    cursor.close();
+    return i > 0;
+}
+    
     /**
      * 将数据插入数据库。如果表的主键设为自动增加，则数据的主键值会更改
      * @param list
