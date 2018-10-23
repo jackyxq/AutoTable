@@ -2,7 +2,7 @@ AutoTable
 =========
 ### example
 
-implementation 'com.jacky.table:table:1.0.1'
+	implementation 'com.jacky.table:table:1.0.1'
 
 
 This is a simple android sqlite Object Relational Mapping.
