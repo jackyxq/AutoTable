@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">AutoTable</string>
-    <string name="create">create Table</string>
-    <string name="insert">insert Student</string>
-    <string name="delete">delete Student</string>
-    <string name="drop">drop Table</string>
-    <string name="modify">modify Student</string>
-</resources>
