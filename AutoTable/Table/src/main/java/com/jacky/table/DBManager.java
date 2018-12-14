@@ -2,7 +2,6 @@ package com.jacky.table;
 
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
@@ -11,12 +10,16 @@ import android.text.TextUtils;
 import com.jacky.log.Logger;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 
 /**
@@ -60,12 +63,22 @@ public final class DBManager {
             return;
         }
 
-        SharedPreferences preferences =
-                context.getSharedPreferences("jacky_db", Context.MODE_PRIVATE);
-//                PreferenceManager.getDefaultSharedPreferences(context);
+//        SharedPreferences preferences =
+//                context.getSharedPreferences("jacky_db", Context.MODE_PRIVATE);
+
 
         File file = new File(mDatabase.getPath());
         String dbName = file.getName();
+
+        Properties properties = new Properties();
+        File preferences = new File(file.getParent(), "jacky_db");
+        if(preferences.exists() && preferences.canRead()) {
+            try {
+                properties.load(new FileInputStream(preferences));
+            } catch (IOException e) {
+                Logger.e(e);
+            }
+        }
 
         beginTransaction();
         for(Class<?> clazz : classes) {
@@ -76,16 +89,16 @@ public final class DBManager {
 
             String tableName = table.value();
             String createSql = generateCreateTableSql(table, fields);
-            int sqlVersion = createSql.hashCode();
-            String preferencesKey = "SQL:" + dbName + '_' + tableName;
+            String sqlVersion = String.valueOf(createSql.hashCode());
+            String preferencesKey = "SQL_" + dbName + '_' + tableName;
 
             Map<String, String> map = queryTableColumnsInfo(mDatabase, tableName);
             if(map == null) {
                 mDatabase.execSQL(createSql);
             } else {
-                int version = preferences.getInt(preferencesKey, 0);
+                String version = properties.getProperty(preferencesKey);
                 //判断建表语句是否发生了变更
-                if(version == sqlVersion) continue;
+                if(sqlVersion != null && sqlVersion.equals(version)) continue;
 
                 //比对原始表与新表之间共同的字段
                 StringBuilder sb = new StringBuilder();
@@ -113,10 +126,20 @@ public final class DBManager {
                 }
             }
             //缓存建表语句的版本号
-            preferences.edit().putInt(preferencesKey, sqlVersion).commit();
+            properties.setProperty(preferencesKey, String.valueOf(sqlVersion));
         }
         setTransactionSuccessful();
         endTransaction();
+
+        try {
+            if(!preferences.exists()) {
+                preferences.getParentFile().mkdirs();
+                preferences.createNewFile();
+            }
+            properties.store(new FileOutputStream(preferences), "");
+        } catch (IOException e) {
+            Logger.e(e);
+        }
     }
 
     public boolean isTableExit(Class clazz) {
