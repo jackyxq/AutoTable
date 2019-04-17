@@ -4,5 +4,6 @@
     <string name="insert">insert Student</string>
     <string name="delete">delete Student</string>
     <string name="drop">drop Table</string>
+    <string name="list">list Student</string>
     <string name="modify">modify Student</string>
 </resources>

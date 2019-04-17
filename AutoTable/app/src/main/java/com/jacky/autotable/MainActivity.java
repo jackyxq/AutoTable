@@ -4,7 +4,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 
+import com.jacky.log.Logger;
 import com.jacky.table.DBManager;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -21,6 +24,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.drop).setOnClickListener(this);
         findViewById(R.id.insert).setOnClickListener(this);
         findViewById(R.id.modify).setOnClickListener(this);
+        findViewById(R.id.list).setOnClickListener(this);
     }
 
     public void onClick(View v) {
@@ -32,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //            	mDBManager.dropTables(Student.class);
             } break;
             case R.id.insert : {
-                Student student1 = new Student();
+                Student student1 = new Student(); student1.color = Color.BLUE;
                 mDBManager.insert(student1);
 
                 Student student2 = new Student();
@@ -51,6 +55,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.delete : {
                 mDBManager.deleteAll(Student.class);
             }break;
+            case R.id.list :
+                List<Student> list = mDBManager.query(Student.class);
+                Logger.i(list);
+                break;
         }
     }
 }

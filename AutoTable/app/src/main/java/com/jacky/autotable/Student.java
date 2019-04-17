@@ -16,6 +16,8 @@ public class Student {
     private int age;
     @Column("sex")
     private boolean sex;
+    @Column("color")
+    public Color color = Color.RED;
 
     public int getId() {
         return id;
@@ -47,5 +49,16 @@ public class Student {
 
     public void setSex(boolean sex) {
         this.sex = sex;
+    }
+
+    @Override
+    public String toString() {
+        return "Student{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", age=" + age +
+                ", sex=" + sex +
+                ", color=" + color +
+                '}';
     }
 }

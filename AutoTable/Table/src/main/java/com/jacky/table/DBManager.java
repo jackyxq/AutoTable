@@ -729,7 +729,16 @@ public final class DBManager {
                 } else if(type == Byte.TYPE) {
                     field.setByte(t, (byte)cursor.getInt(index));
                 } else if(type == Byte.class) {
-                    field.set(t, (byte)cursor.getInt(index));
+                    field.set(t, (byte) cursor.getInt(index));
+                } else if(type.isEnum()) {
+                    String s = cursor.getString(index);
+                    Object[] tt = type.getEnumConstants();
+                    for(Object oo : tt) {
+                        if(s.equals(oo.toString())) {
+                            field.set(t, oo);
+                            break;
+                        }
+                    }
                 } else {
                     //TODO... 其他类型
                 }
@@ -755,6 +764,7 @@ public final class DBManager {
         if(Boolean.TYPE == type || Boolean.class == type) return DBType.BOOLEAN;
         if(Byte.TYPE == type || Byte.class == type) return DBType.INT;
         if(CharSequence.class.isAssignableFrom(type)) return DBType.TEXT;
+        if(type.isEnum()) return DBType.TEXT;
 
         throw new DatabaseException(type + " no support to mapping.");
     }
