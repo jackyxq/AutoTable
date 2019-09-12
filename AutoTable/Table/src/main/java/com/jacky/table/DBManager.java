@@ -3,6 +3,7 @@ package com.jacky.table;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.text.TextUtils;
 
@@ -233,31 +234,38 @@ public final class DBManager {
         Field[] fields = clazz.getDeclaredFields();
 
         beginTransaction();
-        for(T t : list) {
-            if(t == null) continue;
-            checkClass(t, clazz);
-            Field idField = null;
-            ContentValues values = new ContentValues();
-            for(Field field : fields) {
-                Column column = field.getAnnotation(Column.class);
-                if(column == null) continue;
-                if(table.autoId() && column.isPrimary()) {
-                    idField = field;
-                    continue;//自动生成主键，则不添加主键信息
+        ContentValues values = null;
+        try {
+            for (T t : list) {
+                if (t == null) continue;
+                checkClass(t, clazz);
+                Field idField = null;
+                values = new ContentValues();
+                for (Field field : fields) {
+                    Column column = field.getAnnotation(Column.class);
+                    if (column == null) continue;
+                    if (table.autoId() && column.isPrimary()) {
+                        idField = field;
+                        continue;//自动生成主键，则不添加主键信息
+                    }
+
+                    String tmp = getFieldValue(clazz, column, field, t);
+                    if (tmp != null) {
+                        values.put(column.value(), tmp);
+                    }
                 }
 
-                String tmp = getFieldValue(clazz, column, field, t);
-                if(tmp != null) {
-                    values.put(column.value(), tmp);
+                long id = mDatabase.insertOrThrow(table.value(), null, values);
+                if (idField != null && id != -1) {
+                    setObjectValue(idField, t, id);//更新 主键ID
                 }
             }
-            long id = mDatabase.insert(table.value(), null, values);
-            if(idField != null && id != -1) {
-                setObjectValue(idField, t, id);//更新 主键ID
-            }
+        } catch (SQLException e) {
+            throw new SQLException(values.toString(), e);
+        } finally {
+            setTransactionSuccessful();
+            endTransaction();
         }
-        setTransactionSuccessful();
-        endTransaction();
     }
 
     public <T> void replaceInto(List<T> list) {
@@ -294,41 +302,46 @@ public final class DBManager {
 
         String id = null;
         beginTransaction();
-        for(T t : list) {
-            if(t == null) continue;
-            checkClass(t, clazz);
-            Field idField = null;
-            ContentValues values = new ContentValues();
-            for(Field field : fields) {
-                Column column = field.getAnnotation(Column.class);
-                if(column == null) continue;
+        ContentValues values = null;
+        try {
+            for (T t : list) {
+                if (t == null) continue;
+                checkClass(t, clazz);
+                Field idField = null;
+                values = new ContentValues();
+                for (Field field : fields) {
+                    Column column = field.getAnnotation(Column.class);
+                    if (column == null) continue;
 
-                if(column.isPrimary()) {
-                    id = getFieldValue(clazz, column, field, t);
+                    if (column.isPrimary()) {
+                        id = getFieldValue(clazz, column, field, t);
 
-                    if(table.autoId()) {
-                        idField = field;
-                        continue;//自动生成主键，则不添加主键信息
+                        if (table.autoId()) {
+                            idField = field;
+                            continue;//自动生成主键，则不添加主键信息
+                        }
+                    }
+                    if (isIgnoreColumn(ignoreColumn, column)) continue;
+
+                    String tmp = getFieldValue(clazz, column, field, t);
+                    if (tmp != null) {
+                        values.put(column.value(), tmp);
                     }
                 }
-                if(isIgnoreColumn(ignoreColumn, column)) continue;
-
-                String tmp = getFieldValue(clazz, column, field, t);
-                if(tmp != null) {
-                    values.put(column.value(), tmp);
+                int i = mDatabase.update(table.value(), values, whereClause, new String[]{id});
+                if (i == 0) { //没有数据，则insert
+                    long newid = mDatabase.insertOrThrow(table.value(), null, values);
+                    if (idField != null && newid != -1) {
+                        setObjectValue(idField, t, newid);//更新 主键ID
+                    }
                 }
             }
-
-            int i = mDatabase.update(table.value(), values, whereClause, new String[]{id});
-            if(i == 0) { //没有数据，则insert
-                long newid = mDatabase.insert(table.value(), null, values);
-                if(idField != null && newid != -1) {
-                    setObjectValue(idField, t, newid);//更新 主键ID
-                }
-            }
+        }catch (SQLException ee) {
+            throw new SQLException(values.toString(), ee);
+        } finally {
+            setTransactionSuccessful();
+            endTransaction();
         }
-        setTransactionSuccessful();
-        endTransaction();
     }
 
     public <T> void update(T... list) {
@@ -392,7 +405,11 @@ public final class DBManager {
         String table = getTableName(clazz);
         int i = mDatabase.update(table, values, whereClause, whereArgs);
         if(i == 0) { //没有数据，则insert
-            mDatabase.insert(table, null, values);
+            try {
+                mDatabase.insertOrThrow(table, null, values);
+            }catch (SQLException e) {
+                throw new SQLException(values.toString(), e);
+            }
         }
     }
 
