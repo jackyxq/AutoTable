@@ -616,8 +616,10 @@ public final class DBManager {
     }
 
     public void setTransactionSuccessful() {
-        if(isBeginTransaction) {
+        if(isBeginTransaction && mDatabase != null && mDatabase.inTransaction()) {
             mDatabase.setTransactionSuccessful();
+        } else {
+            isBeginTransaction = false;
         }
     }
 
